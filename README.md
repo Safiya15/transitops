@@ -2,6 +2,9 @@
 
 TransitOps is a full-stack Transport Operations Management System developed during an 8-hour hackathon. The platform digitizes transport operations by enabling organizations to efficiently manage vehicles, drivers, trips, maintenance, fuel expenses, and operational analytics from a centralized dashboard.
 
+#Live demo
+https://transitops-sigma.vercel.app/
+
 ## Project Overview
 
 Many transport and logistics companies still rely on spreadsheets and manual processes for fleet management. TransitOps addresses this challenge by providing a centralized web application that simplifies vehicle management, driver allocation, trip scheduling, maintenance tracking, and expense monitoring while enforcing important business rules.
