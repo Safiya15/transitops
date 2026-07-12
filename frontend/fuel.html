@@ -14,7 +14,7 @@
           <div class="page-title">Fuel & Expense Management</div>
           <div class="page-subtitle">Total operational cost is Fuel + Maintenance + other expenses, per vehicle</div>
         </div>
-        <div class="toolbar" style="margin:0;">
+        <div class="toolbar toolbar-tight">
           <button class="btn btn-accent" onclick="toggle('fuel-form-card')">+ Log Fuel</button>
           <button class="btn btn-ghost" onclick="toggle('expense-form-card')">+ Add Expense</button>
         </div>
@@ -22,7 +22,7 @@
 
       <div id="alert-box"></div>
 
-      <div class="card" id="fuel-form-card" style="display:none;">
+      <div class="card is-hidden" id="fuel-form-card">
         <div class="card-title">Log fuel entry</div>
         <form id="fuel-form" class="form-grid">
           <div class="form-field"><label>Vehicle</label><select id="f-vehicle" required></select></div>
@@ -33,7 +33,7 @@
         </form>
       </div>
 
-      <div class="card" id="expense-form-card" style="display:none;">
+      <div class="card is-hidden" id="expense-form-card">
         <div class="card-title">Add expense</div>
         <form id="expense-form" class="form-grid">
           <div class="form-field"><label>Vehicle</label><select id="e-vehicle" required></select></div>
@@ -84,7 +84,7 @@
 
     function toggle(id) {
       const el = document.getElementById(id);
-      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+      el.style.display = getComputedStyle(el).display === 'none' ? 'block' : 'none';
     }
 
     async function loadVehicleOptions() {
@@ -116,7 +116,7 @@
           <td class="mono">${fmtMoney(r.fuel_total)}</td>
           <td class="mono">${fmtMoney(r.maintenance_total)}</td>
           <td class="mono">${fmtMoney(r.other_expense_total)}</td>
-          <td class="mono" style="font-weight:600;">${fmtMoney(r.total_operational_cost)}</td>
+          <td class="mono text-strong">${fmtMoney(r.total_operational_cost)}</td>
         </tr>
       `).join('');
     }

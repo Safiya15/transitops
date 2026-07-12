@@ -18,10 +18,10 @@
 
       <div id="alert-box"></div>
 
-      <div style="display:grid; grid-template-columns: 340px 1fr; gap:20px; align-items:start;">
+      <div class="layout-split-maintenance">
         <div class="card">
           <div class="card-title">Log service record</div>
-          <form id="maint-form" style="display:flex; flex-direction:column; gap:14px;">
+          <form id="maint-form" class="form-stack">
             <div class="form-field">
               <label>Vehicle</label>
               <select id="m-vehicle" required></select>
@@ -32,9 +32,9 @@
             <button class="btn btn-accent" type="submit">Save</button>
           </form>
 
-          <div style="margin-top:22px; padding-top:16px; border-top:1px solid var(--border); font-size:12.5px; color:var(--text-dim); line-height:1.8;">
-            <div><span class="pill pill-green" style="margin-right:6px;"><span class="pulse"></span>Available</span> → creating active record → <span class="pill pill-orange"><span class="pulse"></span>In Shop</span></div>
-            <div style="margin-top:6px;"><span class="pill pill-orange" style="margin-right:6px;"><span class="pulse"></span>In Shop</span> → closing record → <span class="pill pill-green"><span class="pulse"></span>Available</span></div>
+          <div class="maintenance-flow">
+            <div><span class="pill pill-green mr-6"><span class="pulse"></span>Available</span> → creating active record → <span class="pill pill-orange"><span class="pulse"></span>In Shop</span></div>
+            <div class="mt-6"><span class="pill pill-orange mr-6"><span class="pulse"></span>In Shop</span> → closing record → <span class="pill pill-green"><span class="pulse"></span>Available</span></div>
           </div>
         </div>
 
@@ -44,7 +44,7 @@
             <thead><tr><th>Vehicle</th><th>Service</th><th>Cost</th><th>Status</th><th></th></tr></thead>
             <tbody id="maint-rows"></tbody>
           </table>
-          <div id="empty" class="empty" style="display:none;">No maintenance records yet.</div>
+          <div id="empty" class="empty is-hidden">No maintenance records yet.</div>
         </div>
       </div>
     </main>

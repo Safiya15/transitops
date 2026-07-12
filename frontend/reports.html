@@ -23,12 +23,12 @@
 
       <div class="card">
         <div class="card-title">Monthly revenue (estimated from completed trips)</div>
-        <div id="bar-chart" style="display:flex; align-items:flex-end; gap:10px; height:140px; padding-top:10px;"></div>
+        <div id="bar-chart" class="bar-chart"></div>
       </div>
 
       <div class="card">
         <div class="card-title">Vehicle ROI</div>
-        <div class="page-subtitle" style="margin-bottom:12px;">ROI = (Estimated Revenue − (Maintenance + Fuel)) / Acquisition Cost. Revenue is estimated from completed trip distance since TransitOps has no billing module — adjust the rate in reports.js if your judges expect a different figure.</div>
+        <div class="page-subtitle mb-12">ROI = (Estimated Revenue − (Maintenance + Fuel)) / Acquisition Cost. Revenue is estimated from completed trip distance since TransitOps has no billing module — adjust the rate in reports.js if your judges expect a different figure.</div>
         <table>
           <thead><tr><th>Vehicle</th><th>Acq. Cost</th><th>Fuel</th><th>Maintenance</th><th>Est. Revenue</th><th>ROI %</th></tr></thead>
           <tbody id="roi-rows"></tbody>
@@ -67,9 +67,9 @@
         const bars = data.monthly_revenue || [];
         const max = Math.max(...bars.map(b => Number(b.revenue)), 1);
         document.getElementById('bar-chart').innerHTML = bars.length ? bars.map(b => `
-          <div style="display:flex; flex-direction:column; align-items:center; gap:6px; flex:1;">
-            <div style="width:100%; max-width:36px; background:var(--accent); border-radius:4px 4px 0 0; height:${(b.revenue / max) * 100}px;"></div>
-            <div style="font-size:11px; color:var(--text-faint);">${b.month}</div>
+          <div class="bar-item">
+            <div class="bar-value bar-h-${Math.max(1, Math.round((b.revenue / max) * 10))}"></div>
+            <div class="bar-label">${b.month}</div>
           </div>
         `).join('') : '<div class="empty">No completed trips yet to chart.</div>';
       } catch (err) {
@@ -87,7 +87,7 @@
             <td class="mono">${fmtMoney(r.fuel_total)}</td>
             <td class="mono">${fmtMoney(r.maintenance_total)}</td>
             <td class="mono">${fmtMoney(r.estimated_revenue)}</td>
-            <td class="mono" style="color:${r.roi_pct >= 0 ? 'var(--green)' : 'var(--red)'}; font-weight:600;">${r.roi_pct}%</td>
+            <td class="mono ${r.roi_pct >= 0 ? 'text-success' : 'text-danger'} text-strong">${r.roi_pct}%</td>
           </tr>
         `).join('');
       } catch (err) {

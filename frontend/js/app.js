@@ -9,17 +9,17 @@ const THEME_KEY = 'to_theme';
 
 function getTheme() {
   const theme = localStorage.getItem(THEME_KEY);
-  return theme === 'light' ? 'light' : 'dark';
-}
-
-function themeToggleLabel(theme) {
-  return theme === 'light' ? 'Switch to Dark' : 'Switch to Light';
+  return theme === 'dark' ? 'dark' : 'light';
 }
 
 function applyTheme(theme) {
-  const resolvedTheme = theme === 'light' ? 'light' : 'dark';
+  const resolvedTheme = theme === 'dark' ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', resolvedTheme);
   localStorage.setItem(THEME_KEY, resolvedTheme);
+}
+
+function themeToggleLabel(theme) {
+  return theme === 'dark' ? 'Switch to Light' : 'Switch to Dark';
 }
 
 function toggleTheme() {

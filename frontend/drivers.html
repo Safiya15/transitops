@@ -19,7 +19,7 @@
 
       <div id="alert-box"></div>
 
-      <div class="card" id="add-form-card" style="display:none;">
+      <div class="card is-hidden" id="add-form-card">
         <div class="card-title">Register driver</div>
         <form id="driver-form" class="form-grid">
           <div class="form-field"><label>Name</label><input id="d-name" required></div>
@@ -55,7 +55,7 @@
           </thead>
           <tbody id="driver-rows"></tbody>
         </table>
-        <div id="empty" class="empty" style="display:none;">No drivers match these filters.</div>
+        <div id="empty" class="empty is-hidden">No drivers match these filters.</div>
       </div>
     </main>
   </div>
@@ -70,7 +70,7 @@
 
     function toggleForm() {
       const card = document.getElementById('add-form-card');
-      card.style.display = card.style.display === 'none' ? 'block' : 'none';
+      card.style.display = getComputedStyle(card).display === 'none' ? 'block' : 'none';
     }
 
     function isExpired(dateStr) {
@@ -92,7 +92,7 @@
             <td>${escapeHtml(d.name)}</td>
             <td class="mono">${escapeHtml(d.license_number)}</td>
             <td>${escapeHtml(d.license_category)}</td>
-            <td class="mono" style="${expired ? 'color:var(--red);font-weight:600;' : ''}">${d.license_expiry}${expired ? ' EXPIRED' : ''}</td>
+            <td class="mono ${expired ? 'text-danger text-strong' : ''}">${d.license_expiry}${expired ? ' EXPIRED' : ''}</td>
             <td class="mono">${escapeHtml(d.contact_number)}</td>
             <td class="mono">${d.safety_score}%</td>
             <td>${pill(d.status)}</td>
@@ -105,9 +105,9 @@
     }
 
     function renderStatusActions(d) {
-      if (d.status === 'On Trip') return '<span class="mono" style="color:var(--text-faint);font-size:12px;">locked (on trip)</span>';
+      if (d.status === 'On Trip') return '<span class="mono text-faint text-xs">locked (on trip)</span>';
       const options = ['Available', 'Off Duty', 'Suspended'];
-      return `<select onchange="updateStatus(${d.id}, this.value)" style="padding:6px 8px;font-size:12px;">
+      return `<select class="input-compact" onchange="updateStatus(${d.id}, this.value)">
         ${options.map(o => `<option value="${o}" ${o === d.status ? 'selected' : ''}>${o}</option>`).join('')}
       </select>`;
     }
