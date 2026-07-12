@@ -5,6 +5,31 @@
 // ============================================================
 
 const API_BASE = 'https://transitops-production-b49f.up.railway.app/api';
+const THEME_KEY = 'to_theme';
+
+function getTheme() {
+  const theme = localStorage.getItem(THEME_KEY);
+  return theme === 'light' ? 'light' : 'dark';
+}
+
+function themeToggleLabel(theme) {
+  return theme === 'light' ? 'Switch to Dark' : 'Switch to Light';
+}
+
+function applyTheme(theme) {
+  const resolvedTheme = theme === 'light' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', resolvedTheme);
+  localStorage.setItem(THEME_KEY, resolvedTheme);
+}
+
+function toggleTheme() {
+  const nextTheme = getTheme() === 'dark' ? 'light' : 'dark';
+  applyTheme(nextTheme);
+  const toggleButton = document.getElementById('theme-toggle');
+  if (toggleButton) toggleButton.textContent = themeToggleLabel(nextTheme);
+}
+
+applyTheme(getTheme());
 
 // ---------- Auth ----------
 function getToken() { return localStorage.getItem('to_token'); }
@@ -73,6 +98,7 @@ function renderSidebar(activeKey) {
       <div class="name">${user.name}</div>
       <div class="role">${user.role}</div>
       <div class="logout" onclick="logout()">Log out</div>
+      <button type="button" class="btn btn-ghost btn-theme" id="theme-toggle" onclick="toggleTheme()">${themeToggleLabel(getTheme())}</button>
     </div>
   `;
 }
