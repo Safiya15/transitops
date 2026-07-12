@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TransitOps — Register</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="login-shell">
+    <div class="login-card">
+      <div class="login-brand"><span class="dot" style="width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);"></span> TransitOps</div>
+      <div class="login-sub">Create your account</div>
+
+      <form id="register-form">
+        <div class="form-field">
+          <label>Full name</label>
+          <input type="text" id="name" required>
+        </div>
+        <div class="form-field">
+          <label>Email</label>
+          <input type="email" id="email" required>
+        </div>
+        <div class="form-field">
+          <label>Password</label>
+          <input type="password" id="password" required minlength="6">
+        </div>
+        <div class="form-field">
+          <label>Role</label>
+          <select id="role" required>
+            <option value="Fleet Manager">Fleet Manager</option>
+            <option value="Driver">Driver</option>
+            <option value="Safety Officer">Safety Officer</option>
+            <option value="Financial Analyst">Financial Analyst</option>
+          </select>
+        </div>
+        <button class="btn btn-accent" type="submit">Create account</button>
+      </form>
+
+      <div id="alert-box"></div>
+
+      <div class="link-row">Already have an account? <a href="login.html">Sign in</a></div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert('alert-box');
+      const body = {
+        name: document.getElementById('name').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        password: document.getElementById('password').value,
+        role: document.getElementById('role').value
+      };
+      try {
+        await apiFetch('/auth/register', { method: 'POST', body: JSON.stringify(body) });
+        showAlert('alert-box', 'Account created. You can sign in now.', 'success');
+        setTimeout(() => window.location.href = 'login.html', 1200);
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    });
+  </script>
+</body>
+</html>

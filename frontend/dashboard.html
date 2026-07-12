@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TransitOps — Dashboard</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-subtitle">Fleet-wide operational snapshot</div>
+        </div>
+        <div class="toolbar">
+          <select id="filter-type">
+            <option value="All">All types</option>
+            <option value="Van">Van</option>
+            <option value="Truck">Truck</option>
+            <option value="Mini">Mini</option>
+          </select>
+          <select id="filter-region">
+            <option value="All">All regions</option>
+            <option value="West">West</option>
+            <option value="North">North</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="alert-box"></div>
+
+      <div class="kpi-grid" id="kpi-grid"></div>
+
+      <div class="card">
+        <div class="card-title">Quick links</div>
+        <div class="toolbar" style="margin:0;">
+          <a class="btn btn-ghost" href="vehicles.html">Vehicle Registry →</a>
+          <a class="btn btn-ghost" href="trips.html">Trip Dispatcher →</a>
+          <a class="btn btn-ghost" href="maintenance.html">Maintenance →</a>
+          <a class="btn btn-ghost" href="reports.html">Analytics →</a>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    requireLogin();
+    renderSidebar('dashboard');
+
+    const KPI_DEFS = [
+      { key: 'active_vehicles', label: 'Active Vehicles' },
+      { key: 'available_vehicles', label: 'Available Vehicles' },
+      { key: 'in_shop_vehicles', label: 'Vehicles In Maintenance' },
+      { key: 'active_trips', label: 'Active Trips' },
+      { key: 'pending_trips', label: 'Pending Trips' },
+      { key: 'drivers_on_duty', label: 'Drivers On Duty' },
+      { key: 'fleet_utilization_pct', label: 'Fleet Utilization', suffix: '%' }
+    ];
+
+    async function loadKpis() {
+      clearAlert('alert-box');
+      const type = document.getElementById('filter-type').value;
+      const region = document.getElementById('filter-region').value;
+      try {
+        const data = await apiFetch(`/dashboard/kpis?type=${type}&region=${region}`);
+        document.getElementById('kpi-grid').innerHTML = KPI_DEFS.map(def => `
+          <div class="kpi-card">
+            <div class="kpi-label">${def.label}</div>
+            <div class="kpi-value">${data[def.key] ?? 0}${def.suffix || ''}</div>
+          </div>
+        `).join('');
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    }
+
+    document.getElementById('filter-type').addEventListener('change', loadKpis);
+    document.getElementById('filter-region').addEventListener('change', loadKpis);
+    loadKpis();
+  </script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TransitOps — Maintenance</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Maintenance</div>
+          <div class="page-subtitle">In Shop vehicles are removed from the dispatch pool.</div>
+        </div>
+      </div>
+
+      <div id="alert-box"></div>
+
+      <div style="display:grid; grid-template-columns: 340px 1fr; gap:20px; align-items:start;">
+        <div class="card">
+          <div class="card-title">Log service record</div>
+          <form id="maint-form" style="display:flex; flex-direction:column; gap:14px;">
+            <div class="form-field">
+              <label>Vehicle</label>
+              <select id="m-vehicle" required></select>
+            </div>
+            <div class="form-field"><label>Service Type</label><input id="m-type" placeholder="Oil Change" required></div>
+            <div class="form-field"><label>Cost</label><input id="m-cost" type="number" min="0" required></div>
+            <div class="form-field"><label>Date</label><input id="m-date" type="date" required></div>
+            <button class="btn btn-accent" type="submit">Save</button>
+          </form>
+
+          <div style="margin-top:22px; padding-top:16px; border-top:1px solid var(--border); font-size:12.5px; color:var(--text-dim); line-height:1.8;">
+            <div><span class="pill pill-green" style="margin-right:6px;"><span class="pulse"></span>Available</span> → creating active record → <span class="pill pill-orange"><span class="pulse"></span>In Shop</span></div>
+            <div style="margin-top:6px;"><span class="pill pill-orange" style="margin-right:6px;"><span class="pulse"></span>In Shop</span> → closing record → <span class="pill pill-green"><span class="pulse"></span>Available</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Service log</div>
+          <table>
+            <thead><tr><th>Vehicle</th><th>Service</th><th>Cost</th><th>Status</th><th></th></tr></thead>
+            <tbody id="maint-rows"></tbody>
+          </table>
+          <div id="empty" class="empty" style="display:none;">No maintenance records yet.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    requireLogin();
+    renderSidebar('maintenance');
+
+    async function loadVehicleOptions() {
+      // Any vehicle not currently on a trip can go into maintenance
+      const all = await apiFetch('/vehicles');
+      const eligible = all.filter(v => v.status !== 'On Trip');
+      document.getElementById('m-vehicle').innerHTML = eligible.map(v =>
+        `<option value="${v.id}">${v.name} (${v.reg_no})</option>`
+      ).join('');
+    }
+
+    async function loadMaintenance() {
+      clearAlert('alert-box');
+      try {
+        const rows = await apiFetch('/maintenance');
+        document.getElementById('empty').style.display = rows.length ? 'none' : 'block';
+        document.getElementById('maint-rows').innerHTML = rows.map(m => `
+          <tr>
+            <td class="mono">${escapeHtml(m.vehicle_name)}</td>
+            <td>${escapeHtml(m.service_type)}</td>
+            <td class="mono">${fmtMoney(m.cost)}</td>
+            <td>${pill(m.status === 'Active' ? 'In Shop' : 'Completed')}</td>
+            <td>${m.status === 'Active' ? `<button class="btn btn-ghost" onclick="closeRecord(${m.id})">Close</button>` : ''}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    }
+
+    async function closeRecord(id) {
+      try {
+        await apiFetch(`/maintenance/${id}/close`, { method: 'POST' });
+        await loadVehicleOptions();
+        await loadMaintenance();
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    }
+
+    document.getElementById('maint-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert('alert-box');
+      const body = {
+        vehicle_id: Number(document.getElementById('m-vehicle').value),
+        service_type: document.getElementById('m-type').value.trim(),
+        cost: Number(document.getElementById('m-cost').value),
+        service_date: document.getElementById('m-date').value
+      };
+      try {
+        await apiFetch('/maintenance', { method: 'POST', body: JSON.stringify(body) });
+        e.target.reset();
+        await loadVehicleOptions();
+        await loadMaintenance();
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    });
+
+    (async () => { await loadVehicleOptions(); await loadMaintenance(); })();
+  </script>
+</body>
+</html>

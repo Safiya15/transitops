@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TransitOps — Settings</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Settings & RBAC</div>
+          <div class="page-subtitle">Role-based access control overview</div>
+        </div>
+      </div>
+
+      <div id="access-denied" class="alert alert-error" style="display:none;">Only Fleet Managers can view Settings.</div>
+
+      <div id="settings-content">
+        <div class="card">
+          <div class="card-title">Workspace</div>
+          <div class="form-grid">
+            <div class="form-field"><label>Workspace name</label><input value="TransitOps Demo Fleet" disabled></div>
+            <div class="form-field"><label>Admin</label><input value="Raven K." disabled></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Role-based access control</div>
+          <table class="matrix">
+            <thead>
+              <tr><th>Permission</th><th>Fleet Manager</th><th>Driver</th><th>Safety Officer</th><th>Financial Analyst</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>View dashboard & reports</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td><td class="check">✓</td></tr>
+              <tr><td>Manage vehicles (add/edit/retire)</td><td class="check">✓</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td></tr>
+              <tr><td>Manage drivers</td><td class="check">✓</td><td class="dash">—</td><td class="check">✓</td><td class="dash">—</td></tr>
+              <tr><td>Create / dispatch trips</td><td class="check">✓</td><td class="check">✓</td><td class="dash">—</td><td class="dash">—</td></tr>
+              <tr><td>Log maintenance</td><td class="check">✓</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td></tr>
+              <tr><td>Log fuel / expenses</td><td class="check">✓</td><td class="check">✓</td><td class="dash">—</td><td class="check">✓</td></tr>
+              <tr><td>Export financial reports</td><td class="check">✓</td><td class="dash">—</td><td class="dash">—</td><td class="check">✓</td></tr>
+              <tr><td>Access Settings/RBAC</td><td class="check">✓</td><td class="dash">—</td><td class="dash">—</td><td class="dash">—</td></tr>
+            </tbody>
+          </table>
+          <div class="page-subtitle" style="margin-top:10px;">This matrix reflects what the backend actually enforces on each route (see middleware/auth.js → requireRole).</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    requireLogin();
+    renderSidebar('settings');
+    const user = getUser();
+    if (user.role !== 'Fleet Manager') {
+      document.getElementById('settings-content').style.display = 'none';
+      document.getElementById('access-denied').style.display = 'block';
+    }
+  </script>
+</body>
+</html>

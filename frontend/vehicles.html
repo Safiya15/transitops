@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TransitOps — Fleet</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Vehicle Registry</div>
+          <div class="page-subtitle">Registration No. must be unique · Retired/In Shop vehicles are hidden from Trip Dispatcher</div>
+        </div>
+        <button class="btn btn-accent" id="btn-add" onclick="toggleForm()">+ Add Vehicle</button>
+      </div>
+
+      <div id="alert-box"></div>
+
+      <div class="card" id="add-form-card" style="display:none;">
+        <div class="card-title">Register vehicle</div>
+        <form id="vehicle-form" class="form-grid">
+          <div class="form-field"><label>Registration No. (unique)</label><input id="v-reg" placeholder="GJ01AB1234" required></div>
+          <div class="form-field"><label>Name / Model</label><input id="v-name" placeholder="VAN-05" required></div>
+          <div class="form-field">
+            <label>Type</label>
+            <select id="v-type" required>
+              <option value="Van">Van</option>
+              <option value="Truck">Truck</option>
+              <option value="Mini">Mini</option>
+            </select>
+          </div>
+          <div class="form-field"><label>Max Load Capacity (kg)</label><input id="v-capacity" type="number" min="0" required></div>
+          <div class="form-field"><label>Odometer</label><input id="v-odometer" type="number" min="0" value="0"></div>
+          <div class="form-field"><label>Acquisition Cost</label><input id="v-cost" type="number" min="0" value="0"></div>
+          <div class="form-field"><label>Region</label><input id="v-region" placeholder="West"></div>
+          <div class="form-field full">
+            <button class="btn btn-accent" type="submit">Save vehicle</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="toolbar">
+          <select id="filter-type">
+            <option value="All">Type: All</option>
+            <option value="Van">Van</option>
+            <option value="Truck">Truck</option>
+            <option value="Mini">Mini</option>
+          </select>
+          <select id="filter-status">
+            <option value="All">Status: All</option>
+            <option value="Available">Available</option>
+            <option value="On Trip">On Trip</option>
+            <option value="In Shop">In Shop</option>
+            <option value="Retired">Retired</option>
+          </select>
+          <input id="search" placeholder="Search reg no...">
+          <div class="toolbar-spacer"></div>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Reg. No.</th><th>Name/Model</th><th>Type</th><th>Capacity</th><th>Odometer</th><th>Acq. Cost</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody id="vehicle-rows"></tbody>
+        </table>
+        <div id="empty" class="empty" style="display:none;">No vehicles match these filters.</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    requireLogin();
+    renderSidebar('fleet');
+    const user = getUser();
+    const canEdit = user.role === 'Fleet Manager';
+    if (!canEdit) document.getElementById('btn-add').style.display = 'none';
+
+    function toggleForm() {
+      const card = document.getElementById('add-form-card');
+      card.style.display = card.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function loadVehicles() {
+      clearAlert('alert-box');
+      const type = document.getElementById('filter-type').value;
+      const status = document.getElementById('filter-status').value;
+      const search = document.getElementById('search').value;
+      try {
+        const rows = await apiFetch(`/vehicles?type=${type}&status=${status}&search=${encodeURIComponent(search)}`);
+        const tbody = document.getElementById('vehicle-rows');
+        document.getElementById('empty').style.display = rows.length ? 'none' : 'block';
+        tbody.innerHTML = rows.map(v => `
+          <tr>
+            <td class="mono">${escapeHtml(v.reg_no)}</td>
+            <td>${escapeHtml(v.name)}</td>
+            <td>${escapeHtml(v.type)}</td>
+            <td class="mono">${v.max_load_capacity} kg</td>
+            <td class="mono">${Number(v.odometer).toLocaleString()}</td>
+            <td class="mono">${fmtMoney(v.acquisition_cost)}</td>
+            <td>${pill(v.status)}</td>
+            <td>${canEdit ? `<button class="btn btn-ghost" onclick="markRetired(${v.id})">Retire</button>` : ''}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    }
+
+    async function markRetired(id) {
+      if (!confirm('Mark this vehicle as Retired?')) return;
+      try {
+        await apiFetch(`/vehicles/${id}`, { method: 'PUT', body: JSON.stringify({ status: 'Retired' }) });
+        loadVehicles();
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    }
+
+    document.getElementById('vehicle-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert('alert-box');
+      const body = {
+        reg_no: document.getElementById('v-reg').value.trim(),
+        name: document.getElementById('v-name').value.trim(),
+        type: document.getElementById('v-type').value,
+        max_load_capacity: Number(document.getElementById('v-capacity').value),
+        odometer: Number(document.getElementById('v-odometer').value),
+        acquisition_cost: Number(document.getElementById('v-cost').value),
+        region: document.getElementById('v-region').value.trim() || null
+      };
+      try {
+        await apiFetch('/vehicles', { method: 'POST', body: JSON.stringify(body) });
+        e.target.reset();
+        toggleForm();
+        loadVehicles();
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    });
+
+    ['filter-type', 'filter-status'].forEach(id => document.getElementById(id).addEventListener('change', loadVehicles));
+    document.getElementById('search').addEventListener('input', loadVehicles);
+    loadVehicles();
+  </script>
+</body>
+</html>

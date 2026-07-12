@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TransitOps — Trips</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Trip Dispatcher</div>
+          <div class="page-subtitle">On Complete: odometer → fuel log → expenses → Vehicle & Driver Available</div>
+        </div>
+      </div>
+
+      <div id="alert-box"></div>
+
+      <div style="display:grid; grid-template-columns: 380px 1fr; gap:20px; align-items:start;">
+        <div class="card">
+          <div class="card-title">Create trip</div>
+          <form id="trip-form" style="display:flex; flex-direction:column; gap:14px;">
+            <div class="form-field"><label>Source</label><input id="t-source" required></div>
+            <div class="form-field"><label>Destination</label><input id="t-destination" required></div>
+            <div class="form-field">
+              <label>Vehicle (available only)</label>
+              <select id="t-vehicle" required></select>
+            </div>
+            <div class="form-field">
+              <label>Driver (available only)</label>
+              <select id="t-driver" required></select>
+            </div>
+            <div class="form-field"><label>Cargo Weight (kg)</label><input id="t-cargo" type="number" min="0" required></div>
+            <div class="form-field"><label>Planned Distance (km)</label><input id="t-distance" type="number" min="0" required></div>
+            <div id="capacity-check"></div>
+            <button class="btn btn-accent" type="submit" id="btn-create-trip">Create Draft Trip</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Live Board</div>
+          <div class="toolbar">
+            <select id="filter-status">
+              <option value="All">Status: All</option>
+              <option value="Draft">Draft</option>
+              <option value="Dispatched">Dispatched</option>
+              <option value="Completed">Completed</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div id="trip-board" style="display:flex; flex-direction:column; gap:12px;"></div>
+          <div id="empty" class="empty" style="display:none;">No trips yet.</div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Complete trip modal (simple inline card, not a real modal to keep this lightweight) -->
+  <script src="js/app.js"></script>
+  <script>
+    requireLogin();
+    renderSidebar('trips');
+    const user = getUser();
+
+    let vehicles = [];
+    let drivers = [];
+
+    async function loadOptions() {
+      vehicles = await apiFetch('/vehicles/available');
+      drivers = await apiFetch('/drivers/available');
+      document.getElementById('t-vehicle').innerHTML = vehicles.map(v =>
+        `<option value="${v.id}" data-capacity="${v.max_load_capacity}">${v.name} — ${v.max_load_capacity} kg capacity</option>`
+      ).join('') || '<option value="">No vehicles available</option>';
+      document.getElementById('t-driver').innerHTML = drivers.map(d =>
+        `<option value="${d.id}">${d.name}</option>`
+      ).join('') || '<option value="">No drivers available</option>';
+    }
+
+    function checkCapacity() {
+      const vehicleSelect = document.getElementById('t-vehicle');
+      const capacity = Number(vehicleSelect.selectedOptions[0]?.dataset.capacity || 0);
+      const cargo = Number(document.getElementById('t-cargo').value || 0);
+      const box = document.getElementById('capacity-check');
+      const btn = document.getElementById('btn-create-trip');
+
+      if (!capacity || !cargo) { box.innerHTML = ''; btn.disabled = false; return; }
+
+      if (cargo > capacity) {
+        const over = cargo - capacity;
+        box.innerHTML = `<div class="alert alert-error">Vehicle Capacity: ${capacity} kg<br>Cargo Weight: ${cargo} kg<br>✕ Capacity exceeded by ${over} kg — dispatch blocked</div>`;
+        btn.disabled = true;
+      } else {
+        box.innerHTML = `<div class="alert alert-success">✓ Within capacity (${capacity - cargo} kg to spare)</div>`;
+        btn.disabled = false;
+      }
+    }
+
+    document.getElementById('t-vehicle').addEventListener('change', checkCapacity);
+    document.getElementById('t-cargo').addEventListener('input', checkCapacity);
+
+    document.getElementById('trip-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert('alert-box');
+      const body = {
+        source: document.getElementById('t-source').value.trim(),
+        destination: document.getElementById('t-destination').value.trim(),
+        vehicle_id: Number(document.getElementById('t-vehicle').value),
+        driver_id: Number(document.getElementById('t-driver').value),
+        cargo_weight: Number(document.getElementById('t-cargo').value),
+        planned_distance: Number(document.getElementById('t-distance').value)
+      };
+      try {
+        await apiFetch('/trips', { method: 'POST', body: JSON.stringify(body) });
+        e.target.reset();
+        document.getElementById('capacity-check').innerHTML = '';
+        await loadOptions();
+        await loadTrips();
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    });
+
+    function stepperFor(status) {
+      const stages = ['Draft', 'Dispatched', 'Completed'];
+      if (status === 'Cancelled') {
+        return `<div class="pill pill-red"><span class="pulse"></span>Cancelled</div>`;
+      }
+      const currentIdx = stages.indexOf(status);
+      return `<div class="stepper" style="margin:0;">
+        ${stages.map((s, i) => `
+          <div class="step ${i < currentIdx ? 'done' : i === currentIdx ? 'current' : ''}">
+            <span class="step-dot"></span><span class="step-label">${s}</span>
+          </div>
+          ${i < stages.length - 1 ? '<span class="step-line"></span>' : ''}
+        `).join('')}
+      </div>`;
+    }
+
+    async function loadTrips() {
+      clearAlert('alert-box');
+      const status = document.getElementById('filter-status').value;
+      try {
+        const trips = await apiFetch(`/trips?status=${status}`);
+        document.getElementById('empty').style.display = trips.length ? 'none' : 'block';
+        document.getElementById('trip-board').innerHTML = trips.map(t => `
+          <div class="card" style="margin-bottom:0;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+              <div>
+                <div class="mono" style="font-weight:600; margin-bottom:2px;">${t.trip_code}</div>
+                <div style="font-size:13px;">${escapeHtml(t.source)} → ${escapeHtml(t.destination)}</div>
+                <div style="font-size:12px; color:var(--text-faint); margin-top:2px;">${escapeHtml(t.reg_no)} / ${escapeHtml(t.driver_name)} · Cargo ${t.cargo_weight}kg · ${t.planned_distance}km</div>
+              </div>
+              <div>${stepperFor(t.status)}</div>
+            </div>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+              ${t.status === 'Draft' ? `<button class="btn btn-accent" onclick="dispatchTrip(${t.id})">Dispatch</button>` : ''}
+              ${t.status === 'Dispatched' ? `<button class="btn btn-accent" onclick="openComplete(${t.id})">Complete</button>` : ''}
+              ${['Draft','Dispatched'].includes(t.status) ? `<button class="btn btn-ghost" onclick="cancelTrip(${t.id})">Cancel</button>` : ''}
+            </div>
+            <div id="complete-form-${t.id}"></div>
+          </div>
+        `).join('');
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    }
+
+    async function dispatchTrip(id) {
+      try {
+        await apiFetch(`/trips/${id}/dispatch`, { method: 'POST' });
+        await loadOptions();
+        await loadTrips();
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    }
+
+    async function cancelTrip(id) {
+      if (!confirm('Cancel this trip?')) return;
+      try {
+        await apiFetch(`/trips/${id}/cancel`, { method: 'POST' });
+        await loadOptions();
+        await loadTrips();
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    }
+
+    function openComplete(id) {
+      const el = document.getElementById(`complete-form-${id}`);
+      el.innerHTML = `
+        <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border); display:grid; grid-template-columns:repeat(3,1fr); gap:10px;">
+          <div class="form-field"><label>Final Odometer</label><input type="number" id="odo-${id}"></div>
+          <div class="form-field"><label>Fuel Consumed (L)</label><input type="number" id="fuel-${id}"></div>
+          <div class="form-field"><label>Fuel Cost</label><input type="number" id="cost-${id}"></div>
+        </div>
+        <button class="btn btn-accent" style="margin-top:10px;" onclick="submitComplete(${id})">Confirm completion</button>
+      `;
+    }
+
+    async function submitComplete(id) {
+      const body = {
+        final_odometer: Number(document.getElementById(`odo-${id}`).value),
+        fuel_consumed: Number(document.getElementById(`fuel-${id}`).value),
+        fuel_cost: Number(document.getElementById(`cost-${id}`).value)
+      };
+      try {
+        await apiFetch(`/trips/${id}/complete`, { method: 'POST', body: JSON.stringify(body) });
+        await loadOptions();
+        await loadTrips();
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    }
+
+    document.getElementById('filter-status').addEventListener('change', loadTrips);
+
+    (async () => { await loadOptions(); await loadTrips(); })();
+  </script>
+</body>
+</html>

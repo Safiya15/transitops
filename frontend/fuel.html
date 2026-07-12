@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TransitOps — Fuel & Expenses</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Fuel & Expense Management</div>
+          <div class="page-subtitle">Total operational cost is Fuel + Maintenance + other expenses, per vehicle</div>
+        </div>
+        <div class="toolbar" style="margin:0;">
+          <button class="btn btn-accent" onclick="toggle('fuel-form-card')">+ Log Fuel</button>
+          <button class="btn btn-ghost" onclick="toggle('expense-form-card')">+ Add Expense</button>
+        </div>
+      </div>
+
+      <div id="alert-box"></div>
+
+      <div class="card" id="fuel-form-card" style="display:none;">
+        <div class="card-title">Log fuel entry</div>
+        <form id="fuel-form" class="form-grid">
+          <div class="form-field"><label>Vehicle</label><select id="f-vehicle" required></select></div>
+          <div class="form-field"><label>Date</label><input id="f-date" type="date" required></div>
+          <div class="form-field"><label>Liters</label><input id="f-liters" type="number" min="0" required></div>
+          <div class="form-field"><label>Cost</label><input id="f-cost" type="number" min="0" required></div>
+          <div class="form-field full"><button class="btn btn-accent" type="submit">Save</button></div>
+        </form>
+      </div>
+
+      <div class="card" id="expense-form-card" style="display:none;">
+        <div class="card-title">Add expense</div>
+        <form id="expense-form" class="form-grid">
+          <div class="form-field"><label>Vehicle</label><select id="e-vehicle" required></select></div>
+          <div class="form-field">
+            <label>Type</label>
+            <select id="e-type" required>
+              <option value="Toll">Toll</option>
+              <option value="Misc">Misc</option>
+              <option value="Parking">Parking</option>
+            </select>
+          </div>
+          <div class="form-field"><label>Cost</label><input id="e-cost" type="number" min="0" required></div>
+          <div class="form-field"><label>Date</label><input id="e-date" type="date" required></div>
+          <div class="form-field full"><button class="btn btn-accent" type="submit">Save</button></div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Fuel logs</div>
+        <table>
+          <thead><tr><th>Vehicle</th><th>Date</th><th>Liters</th><th>Cost</th></tr></thead>
+          <tbody id="fuel-rows"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Other expenses (Toll / Misc)</div>
+        <table>
+          <thead><tr><th>Vehicle</th><th>Type</th><th>Cost</th><th>Date</th></tr></thead>
+          <tbody id="expense-rows"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Total operational cost per vehicle</div>
+        <table>
+          <thead><tr><th>Vehicle</th><th>Fuel</th><th>Maintenance</th><th>Other</th><th>Total</th></tr></thead>
+          <tbody id="cost-rows"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    requireLogin();
+    renderSidebar('fuel');
+
+    function toggle(id) {
+      const el = document.getElementById(id);
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function loadVehicleOptions() {
+      const all = await apiFetch('/vehicles');
+      const opts = all.map(v => `<option value="${v.id}">${v.name} (${v.reg_no})</option>`).join('');
+      document.getElementById('f-vehicle').innerHTML = opts;
+      document.getElementById('e-vehicle').innerHTML = opts;
+    }
+
+    async function loadFuelLogs() {
+      const rows = await apiFetch('/fuel/logs');
+      document.getElementById('fuel-rows').innerHTML = rows.map(f => `
+        <tr><td class="mono">${escapeHtml(f.reg_no)}</td><td class="mono">${f.log_date}</td><td class="mono">${f.liters} L</td><td class="mono">${fmtMoney(f.cost)}</td></tr>
+      `).join('') || '<tr><td colspan="4" class="empty">No fuel logs yet.</td></tr>';
+    }
+
+    async function loadExpenses() {
+      const rows = await apiFetch('/fuel/expenses');
+      document.getElementById('expense-rows').innerHTML = rows.map(e => `
+        <tr><td class="mono">${escapeHtml(e.reg_no)}</td><td>${escapeHtml(e.expense_type)}</td><td class="mono">${fmtMoney(e.cost)}</td><td class="mono">${e.expense_date}</td></tr>
+      `).join('') || '<tr><td colspan="4" class="empty">No expenses yet.</td></tr>';
+    }
+
+    async function loadOperationalCost() {
+      const rows = await apiFetch('/fuel/operational-cost');
+      document.getElementById('cost-rows').innerHTML = rows.map(r => `
+        <tr>
+          <td class="mono">${escapeHtml(r.reg_no)}</td>
+          <td class="mono">${fmtMoney(r.fuel_total)}</td>
+          <td class="mono">${fmtMoney(r.maintenance_total)}</td>
+          <td class="mono">${fmtMoney(r.other_expense_total)}</td>
+          <td class="mono" style="font-weight:600;">${fmtMoney(r.total_operational_cost)}</td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('fuel-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert('alert-box');
+      const body = {
+        vehicle_id: Number(document.getElementById('f-vehicle').value),
+        log_date: document.getElementById('f-date').value,
+        liters: Number(document.getElementById('f-liters').value),
+        cost: Number(document.getElementById('f-cost').value)
+      };
+      try {
+        await apiFetch('/fuel/logs', { method: 'POST', body: JSON.stringify(body) });
+        e.target.reset();
+        await Promise.all([loadFuelLogs(), loadOperationalCost()]);
+      } catch (err) { showAlert('alert-box', err.message); }
+    });
+
+    document.getElementById('expense-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert('alert-box');
+      const body = {
+        vehicle_id: Number(document.getElementById('e-vehicle').value),
+        expense_type: document.getElementById('e-type').value,
+        cost: Number(document.getElementById('e-cost').value),
+        expense_date: document.getElementById('e-date').value
+      };
+      try {
+        await apiFetch('/fuel/expenses', { method: 'POST', body: JSON.stringify(body) });
+        e.target.reset();
+        await Promise.all([loadExpenses(), loadOperationalCost()]);
+      } catch (err) { showAlert('alert-box', err.message); }
+    });
+
+    (async () => {
+      await loadVehicleOptions();
+      await Promise.all([loadFuelLogs(), loadExpenses(), loadOperationalCost()]);
+    })();
+  </script>
+</body>
+</html>

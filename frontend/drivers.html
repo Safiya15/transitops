@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TransitOps — Drivers</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Drivers & Safety Profiles</div>
+          <div class="page-subtitle">Expired license or Suspended status → blocked from trip assignment</div>
+        </div>
+        <button class="btn btn-accent" id="btn-add" onclick="toggleForm()">+ Add Driver</button>
+      </div>
+
+      <div id="alert-box"></div>
+
+      <div class="card" id="add-form-card" style="display:none;">
+        <div class="card-title">Register driver</div>
+        <form id="driver-form" class="form-grid">
+          <div class="form-field"><label>Name</label><input id="d-name" required></div>
+          <div class="form-field"><label>License Number</label><input id="d-license" required></div>
+          <div class="form-field">
+            <label>License Category</label>
+            <select id="d-category" required>
+              <option value="LMV">LMV</option>
+              <option value="HMV">HMV</option>
+            </select>
+          </div>
+          <div class="form-field"><label>License Expiry</label><input id="d-expiry" type="date" required></div>
+          <div class="form-field"><label>Contact Number</label><input id="d-contact" required></div>
+          <div class="form-field"><label>Safety Score</label><input id="d-score" type="number" min="0" max="100" value="100"></div>
+          <div class="form-field full"><button class="btn btn-accent" type="submit">Save driver</button></div>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="toolbar">
+          <select id="filter-status">
+            <option value="All">Status: All</option>
+            <option value="Available">Available</option>
+            <option value="On Trip">On Trip</option>
+            <option value="Off Duty">Off Duty</option>
+            <option value="Suspended">Suspended</option>
+          </select>
+          <input id="search" placeholder="Search name...">
+        </div>
+        <table>
+          <thead>
+            <tr><th>Driver</th><th>License No.</th><th>Category</th><th>Expiry</th><th>Contact</th><th>Safety</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody id="driver-rows"></tbody>
+        </table>
+        <div id="empty" class="empty" style="display:none;">No drivers match these filters.</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    requireLogin();
+    renderSidebar('drivers');
+    const user = getUser();
+    const canEdit = ['Fleet Manager', 'Safety Officer'].includes(user.role);
+    if (!canEdit) document.getElementById('btn-add').style.display = 'none';
+
+    function toggleForm() {
+      const card = document.getElementById('add-form-card');
+      card.style.display = card.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function isExpired(dateStr) {
+      return new Date(dateStr) < new Date(new Date().toDateString());
+    }
+
+    async function loadDrivers() {
+      clearAlert('alert-box');
+      const status = document.getElementById('filter-status').value;
+      const search = document.getElementById('search').value;
+      try {
+        const rows = await apiFetch(`/drivers?status=${status}&search=${encodeURIComponent(search)}`);
+        const tbody = document.getElementById('driver-rows');
+        document.getElementById('empty').style.display = rows.length ? 'none' : 'block';
+        tbody.innerHTML = rows.map(d => {
+          const expired = isExpired(d.license_expiry);
+          return `
+          <tr>
+            <td>${escapeHtml(d.name)}</td>
+            <td class="mono">${escapeHtml(d.license_number)}</td>
+            <td>${escapeHtml(d.license_category)}</td>
+            <td class="mono" style="${expired ? 'color:var(--red);font-weight:600;' : ''}">${d.license_expiry}${expired ? ' EXPIRED' : ''}</td>
+            <td class="mono">${escapeHtml(d.contact_number)}</td>
+            <td class="mono">${d.safety_score}%</td>
+            <td>${pill(d.status)}</td>
+            <td>${canEdit ? renderStatusActions(d) : ''}</td>
+          </tr>`;
+        }).join('');
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    }
+
+    function renderStatusActions(d) {
+      if (d.status === 'On Trip') return '<span class="mono" style="color:var(--text-faint);font-size:12px;">locked (on trip)</span>';
+      const options = ['Available', 'Off Duty', 'Suspended'];
+      return `<select onchange="updateStatus(${d.id}, this.value)" style="padding:6px 8px;font-size:12px;">
+        ${options.map(o => `<option value="${o}" ${o === d.status ? 'selected' : ''}>${o}</option>`).join('')}
+      </select>`;
+    }
+
+    async function updateStatus(id, status) {
+      try {
+        await apiFetch(`/drivers/${id}`, { method: 'PUT', body: JSON.stringify({ status }) });
+        loadDrivers();
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    }
+
+    document.getElementById('driver-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearAlert('alert-box');
+      const body = {
+        name: document.getElementById('d-name').value.trim(),
+        license_number: document.getElementById('d-license').value.trim(),
+        license_category: document.getElementById('d-category').value,
+        license_expiry: document.getElementById('d-expiry').value,
+        contact_number: document.getElementById('d-contact').value.trim(),
+        safety_score: Number(document.getElementById('d-score').value)
+      };
+      try {
+        await apiFetch('/drivers', { method: 'POST', body: JSON.stringify(body) });
+        e.target.reset();
+        toggleForm();
+        loadDrivers();
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    });
+
+    document.getElementById('filter-status').addEventListener('change', loadDrivers);
+    document.getElementById('search').addEventListener('input', loadDrivers);
+    loadDrivers();
+  </script>
+</body>
+</html>

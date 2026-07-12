@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TransitOps — Reports & Analytics</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <nav class="sidebar" id="sidebar"></nav>
+    <main class="main">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Reports & Analytics</div>
+          <div class="page-subtitle">Fuel Efficiency, Fleet Utilization, Operational Cost, Vehicle ROI</div>
+        </div>
+        <a class="btn btn-ghost" id="export-link" href="#">Export CSV</a>
+      </div>
+
+      <div id="alert-box"></div>
+
+      <div class="kpi-grid" id="kpi-grid"></div>
+
+      <div class="card">
+        <div class="card-title">Monthly revenue (estimated from completed trips)</div>
+        <div id="bar-chart" style="display:flex; align-items:flex-end; gap:10px; height:140px; padding-top:10px;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Vehicle ROI</div>
+        <div class="page-subtitle" style="margin-bottom:12px;">ROI = (Estimated Revenue − (Maintenance + Fuel)) / Acquisition Cost. Revenue is estimated from completed trip distance since TransitOps has no billing module — adjust the rate in reports.js if your judges expect a different figure.</div>
+        <table>
+          <thead><tr><th>Vehicle</th><th>Acq. Cost</th><th>Fuel</th><th>Maintenance</th><th>Est. Revenue</th><th>ROI %</th></tr></thead>
+          <tbody id="roi-rows"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    requireLogin();
+    renderSidebar('analytics');
+    document.getElementById('export-link').href = `${API_BASE}/reports/export.csv`;
+    document.getElementById('export-link').onclick = async (e) => {
+      e.preventDefault();
+      try {
+        const res = await fetch(`${API_BASE}/reports/export.csv`, { headers: { Authorization: `Bearer ${getToken()}` } });
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'transitops-report.csv'; a.click();
+        URL.revokeObjectURL(url);
+      } catch (err) { showAlert('alert-box', err.message); }
+    };
+
+    async function loadSummary() {
+      clearAlert('alert-box');
+      try {
+        const data = await apiFetch('/reports/summary');
+        document.getElementById('kpi-grid').innerHTML = `
+          <div class="kpi-card"><div class="kpi-label">Fuel Efficiency</div><div class="kpi-value">${data.fuel_efficiency_km_per_l} km/l</div></div>
+          <div class="kpi-card"><div class="kpi-label">Fleet Utilization</div><div class="kpi-value">${data.fleet_utilization_pct}%</div></div>
+          <div class="kpi-card"><div class="kpi-label">Operational Cost</div><div class="kpi-value">${fmtMoney(data.operational_cost)}</div></div>
+        `;
+
+        const bars = data.monthly_revenue || [];
+        const max = Math.max(...bars.map(b => Number(b.revenue)), 1);
+        document.getElementById('bar-chart').innerHTML = bars.length ? bars.map(b => `
+          <div style="display:flex; flex-direction:column; align-items:center; gap:6px; flex:1;">
+            <div style="width:100%; max-width:36px; background:var(--accent); border-radius:4px 4px 0 0; height:${(b.revenue / max) * 100}px;"></div>
+            <div style="font-size:11px; color:var(--text-faint);">${b.month}</div>
+          </div>
+        `).join('') : '<div class="empty">No completed trips yet to chart.</div>';
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    }
+
+    async function loadRoi() {
+      try {
+        const rows = await apiFetch('/reports/vehicle-roi');
+        document.getElementById('roi-rows').innerHTML = rows.map(r => `
+          <tr>
+            <td class="mono">${escapeHtml(r.reg_no)}</td>
+            <td class="mono">${fmtMoney(r.acquisition_cost)}</td>
+            <td class="mono">${fmtMoney(r.fuel_total)}</td>
+            <td class="mono">${fmtMoney(r.maintenance_total)}</td>
+            <td class="mono">${fmtMoney(r.estimated_revenue)}</td>
+            <td class="mono" style="color:${r.roi_pct >= 0 ? 'var(--green)' : 'var(--red)'}; font-weight:600;">${r.roi_pct}%</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        showAlert('alert-box', err.message);
+      }
+    }
+
+    loadSummary();
+    loadRoi();
+  </script>
+</body>
+</html>
