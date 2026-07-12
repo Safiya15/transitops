@@ -1,16 +1,35 @@
-from typing import Optional
 from datetime import datetime
-from beanie import Document, Link
-from app.modules.trips.models import Trip
+from enum import Enum
+from typing import Optional
+
+# pyrefly: ignore [missing-import]
+from beanie import Document, PydanticObjectId
+from pydantic import Field
+
+
+class ExpenseCategory(str, Enum):
+    TOLL = "Toll"
+    PARKING = "Parking"
+    REPAIR = "Repair"
+    INSURANCE = "Insurance"
+    OTHER = "Other"
 
 
 class Expense(Document):
-    trip: Optional[Link[Trip]] = None
-    category: str                      # e.g. "fuel", "toll", "repair", "misc"
-    amount: float
-    description: Optional[str] = None
-    date: Optional[datetime] = None
-    approved: bool = False
+
+    vehicle_id: PydanticObjectId
+
+    trip_id: Optional[PydanticObjectId] = None
+
+    category: ExpenseCategory
+
+    amount: float = Field(gt=0)
+
+    description: str
+
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow
+    )
 
     class Settings:
         name = "expenses"

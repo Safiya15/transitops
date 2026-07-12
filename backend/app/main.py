@@ -15,9 +15,11 @@ from app.modules.drivers.router import router as drivers_router
 from app.modules.depots.router import router as depots_router
 from app.modules.roads.router import router as roads_router
 from app.modules.trips.router import router as trips_router
-# from app.modules.maintenance.router import router as maintenance_router
-# from app.modules.fuel.router        import router as fuel_router
-# from app.modules.expenses.router    import router as expenses_router
+from app.modules.maintenance.router import router as maintenance_router
+from app.modules.fuel.router import router as fuel_router
+from app.modules.expenses.router import router as expenses_router
+from app.modules.dashboard.router import router as dashboard_router
+from app.modules.reports.router import router as reports_router
 
 
 @asynccontextmanager
@@ -54,9 +56,11 @@ app.include_router(drivers_router)
 app.include_router(depots_router)
 app.include_router(roads_router)
 app.include_router(trips_router)
-# app.include_router(maintenance_router)
-# app.include_router(fuel_router)
-# app.include_router(expenses_router)
+app.include_router(maintenance_router)
+app.include_router(fuel_router)
+app.include_router(expenses_router)
+app.include_router(dashboard_router)
+app.include_router(reports_router)
 
 
 # ---------------------------------------------------------------------------

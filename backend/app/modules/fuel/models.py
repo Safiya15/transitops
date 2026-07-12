@@ -1,17 +1,31 @@
-from typing import Optional
 from datetime import datetime
-from beanie import Document, Link
-from app.modules.vehicles.models import Vehicle
+
+# pyrefly: ignore [missing-import]
+from beanie import Document, PydanticObjectId
+from pymongo import IndexModel, ASCENDING
+from pydantic import Field
 
 
 class FuelLog(Document):
-    vehicle: Optional[Link[Vehicle]] = None
-    liters: float
-    cost_per_liter: float
-    total_cost: float
-    odometer_reading: Optional[float] = None
-    date: Optional[datetime] = None
-    notes: Optional[str] = None
+
+    vehicle_id: PydanticObjectId
+
+    trip_id: PydanticObjectId
+
+    litres: float = Field(gt=0)
+
+    cost: float = Field(gt=0)
+
+    price_per_litre: float
+
+    fuel_efficiency: float
+
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow
+    )
 
     class Settings:
         name = "fuel_logs"
+        indexes = [
+            IndexModel([("trip_id", ASCENDING)], unique=True)
+        ]
