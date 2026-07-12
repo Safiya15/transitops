@@ -1,19 +1,46 @@
-from typing import Optional
 from datetime import datetime
-from beanie import Document, Link
-from app.modules.vehicles.models import Vehicle
-from app.modules.drivers.models import Driver
-from app.modules.roads.models import Road
+from enum import Enum
+from typing import List, Optional
+
+# pyrefly: ignore [missing-import]
+from beanie import Document, PydanticObjectId
+from pydantic import Field
+
+
+class TripStatus(str, Enum):
+    SCHEDULED = "Scheduled"
+    IN_PROGRESS = "In Progress"
+    COMPLETED = "Completed"
+    CANCELLED = "Cancelled"
 
 
 class Trip(Document):
-    vehicle: Optional[Link[Vehicle]] = None
-    driver: Optional[Link[Driver]] = None
-    road: Optional[Link[Road]] = None
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
-    status: str = "scheduled"          # scheduled | in_progress | completed | cancelled
-    notes: Optional[str] = None
+
+    vehicle_id: PydanticObjectId
+
+    driver_id: PydanticObjectId
+
+    source_depot_id: PydanticObjectId
+
+    destination_depot_id: PydanticObjectId
+
+    route: List[PydanticObjectId]
+
+    total_distance: float
+
+    estimated_time: float
+
+    cargo_weight: float
+
+    status: TripStatus = TripStatus.SCHEDULED
+
+    started_at: Optional[datetime] = None
+
+    completed_at: Optional[datetime] = None
+
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow
+    )
 
     class Settings:
         name = "trips"
