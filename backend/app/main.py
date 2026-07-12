@@ -10,8 +10,8 @@ from app.core.database import connect_db, close_db
 # ---------------------------------------------------------------------------
 from app.modules.auth.router import router as auth_router
 from app.modules.users.router import router as users_router
-# from app.modules.vehicles.router    import router as vehicles_router
-# from app.modules.drivers.router     import router as drivers_router
+from app.modules.vehicles.router import router as vehicles_router
+from app.modules.drivers.router import router as drivers_router
 # from app.modules.depots.router      import router as depots_router
 # from app.modules.roads.router       import router as roads_router
 # from app.modules.trips.router       import router as trips_router
@@ -49,8 +49,8 @@ app.add_middleware(
 # ---------------------------------------------------------------------------
 app.include_router(auth_router)
 app.include_router(users_router)
-# app.include_router(vehicles_router)
-# app.include_router(drivers_router)
+app.include_router(vehicles_router)
+app.include_router(drivers_router)
 # app.include_router(depots_router)
 # app.include_router(roads_router)
 # app.include_router(trips_router)
