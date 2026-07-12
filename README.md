@@ -175,9 +175,12 @@ The application is deployed using:
 
 
 
-## Team
+This project was developed during an 8-hour hackathon by:
 
-This project was developed during an 8-hour hackathon as a collaborative team project.
+- Safiya Munshi
+- Mohan Nimbhore
+- Garv 
+- Ankit prajapati
 
 ## License
 
